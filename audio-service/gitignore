@@ -1,0 +1,9 @@
+target/
+audio-storage/
+.classpath
+.project
+.settings/
+*.class
+*.log
+.idea/
+.DS_Store
