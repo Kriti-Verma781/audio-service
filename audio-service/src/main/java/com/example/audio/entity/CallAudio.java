@@ -1,7 +1,10 @@
 package com.example.audio.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
 
@@ -24,11 +27,6 @@ public class CallAudio {
     private LocalDateTime startTime;
 
     private LocalDateTime endTime;
-
-    @JsonIgnore
-    @Lob
-    @Column(columnDefinition = "LONGBLOB")
-    private byte[] audioData;
 
     public CallAudio() {
     }
@@ -83,13 +81,5 @@ public class CallAudio {
 
     public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
-    }
-
-    public byte[] getAudioData() {
-        return audioData;
-    }
-
-    public void setAudioData(byte[] audioData) {
-        this.audioData = audioData;
     }
 }

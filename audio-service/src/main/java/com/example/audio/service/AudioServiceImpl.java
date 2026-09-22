@@ -2,6 +2,7 @@ package com.example.audio.service;
 
 import com.example.audio.entity.CallAudio;
 import com.example.audio.repository.CallAudioRepository;
+
 import org.springframework.stereotype.Service;
 
 import javax.sound.sampled.AudioFileFormat;
@@ -30,15 +31,25 @@ public class AudioServiceImpl implements AudioService {
     private final CallAudioRepository callAudioRepository;
 
     /*
-     * PC ka separate recordings folder
+     * =========================================================
+     * PC RECORDING STORAGE
+     * =========================================================
+     *
+     * Actual audio files yahan save hongi.
+     *
+     * C:\Recordings\callee
+     * C:\Recordings\full-call
      */
     private final Path storageLocation =
             Paths.get("C:\\Recordings");
 
     /*
-     * Active recordings
+     * =========================================================
+     * ACTIVE RECORDINGS
+     * =========================================================
      *
      * Example:
+     *
      * CALL001_CALLEE
      * CALL001_FULL_CALL
      */
@@ -54,8 +65,13 @@ public class AudioServiceImpl implements AudioService {
 
     /*
      * =========================================================
-     * MANUAL WAV UPLOAD
+     * 1. MANUAL WAV UPLOAD
      * =========================================================
+     *
+     * Testing ke liye.
+     *
+     * Actual WAV file PC ke folder mein save hogi.
+     * MySQL mein sirf file path save hoga.
      */
     @Override
     public CallAudio saveUploadedRecording(
@@ -101,12 +117,18 @@ public class AudioServiceImpl implements AudioService {
                     folder.resolve(fileName);
 
             /*
-             * Uploaded WAV ko PC folder mein save karna
+             * Actual recording PC ke folder mein save
              */
-            Files.write(filePath, audioData);
+            Files.write(
+                    filePath,
+                    audioData
+            );
 
             /*
              * Database object
+             *
+             * Yahan actual audio save nahi ho raha.
+             * Sirf file ka path save hoga.
              */
             CallAudio callAudio =
                     new CallAudio();
@@ -127,12 +149,9 @@ public class AudioServiceImpl implements AudioService {
 
             callAudio.setEndTime(endTime);
 
-            /*
-             * Actual audio DB mein
-             */
-            callAudio.setAudioData(audioData);
-
-            return callAudioRepository.save(callAudio);
+            return callAudioRepository.save(
+                    callAudio
+            );
 
         } catch (IOException e) {
 
@@ -143,10 +162,9 @@ public class AudioServiceImpl implements AudioService {
         }
     }
 
-
     /*
      * =========================================================
-     * START RTP RECORDING
+     * 2. START RTP RECORDING
      * =========================================================
      */
     @Override
@@ -162,7 +180,10 @@ public class AudioServiceImpl implements AudioService {
         validateAudioType(audioType);
 
         String key =
-                createKey(callId, audioType);
+                createKey(
+                        callId,
+                        audioType
+                );
 
         if (activeRecordings.containsKey(key)) {
 
@@ -188,7 +209,10 @@ public class AudioServiceImpl implements AudioService {
                         format
                 );
 
-        activeRecordings.put(key, session);
+        activeRecordings.put(
+                key,
+                session
+        );
 
         System.out.println(
                 "[Audio] Recording started: "
@@ -196,11 +220,12 @@ public class AudioServiceImpl implements AudioService {
         );
     }
 
-
     /*
      * =========================================================
-     * RECEIVE AUDIO FROM RTP
+     * 3. RECEIVE AUDIO FROM RTP
      * =========================================================
+     *
+     * RTP module audio bytes yahan bhejega.
      */
     @Override
     public void appendAudio(
@@ -209,7 +234,10 @@ public class AudioServiceImpl implements AudioService {
             byte[] audioData) {
 
         String key =
-                createKey(callId, audioType);
+                createKey(
+                        callId,
+                        audioType
+                );
 
         RecordingSession session =
                 activeRecordings.get(key);
@@ -228,14 +256,24 @@ public class AudioServiceImpl implements AudioService {
             return;
         }
 
+        /*
+         * RTP se aaye audio bytes recording
+         * ke buffer mein add honge.
+         */
         session.append(audioData);
     }
 
-
     /*
      * =========================================================
-     * STOP RECORDING
+     * 4. STOP RECORDING
      * =========================================================
+     *
+     * Recording stop hone par:
+     *
+     * 1. RTP ke raw audio bytes milenge
+     * 2. Unse WAV file banegi
+     * 3. WAV file PC par save hogi
+     * 4. MySQL mein sirf path save hoga
      */
     @Override
     public CallAudio stopRecording(
@@ -243,7 +281,10 @@ public class AudioServiceImpl implements AudioService {
             String audioType) {
 
         String key =
-                createKey(callId, audioType);
+                createKey(
+                        callId,
+                        audioType
+                );
 
         RecordingSession session =
                 activeRecordings.remove(key);
@@ -296,7 +337,7 @@ public class AudioServiceImpl implements AudioService {
                     folder.resolve(fileName);
 
             /*
-             * Raw audio ko WAV file mein convert karna
+             * Raw RTP audio ko WAV file mein convert
              */
             try (
                     ByteArrayInputStream input =
@@ -321,17 +362,15 @@ public class AudioServiceImpl implements AudioService {
                 );
             }
 
-            /*
-             * Final WAV ko read karna
-             */
-            byte[] finalWavBytes =
-                    Files.readAllBytes(wavPath);
-
             LocalDateTime endTime =
                     LocalDateTime.now();
 
             /*
              * Database object
+             *
+             * IMPORTANT:
+             * Actual WAV audio DB mein nahi ja rahi.
+             * Sirf file ka path save ho raha hai.
              */
             CallAudio callAudio =
                     new CallAudio();
@@ -357,12 +396,8 @@ public class AudioServiceImpl implements AudioService {
             );
 
             /*
-             * Final WAV DB mein save
+             * MySQL mein metadata + file path save
              */
-            callAudio.setAudioData(
-                    finalWavBytes
-            );
-
             CallAudio saved =
                     callAudioRepository.save(
                             callAudio
@@ -371,6 +406,8 @@ public class AudioServiceImpl implements AudioService {
             System.out.println(
                     "[Audio] Recording completed: "
                             + key
+                            + " | File: "
+                            + wavPath
                             + " | DB ID: "
                             + saved.getId()
             );
@@ -386,10 +423,9 @@ public class AudioServiceImpl implements AudioService {
         }
     }
 
-
     /*
      * =========================================================
-     * GET AUDIO BY CALL ID
+     * 5. GET AUDIO BY CALL ID
      * =========================================================
      */
     @Override
@@ -400,14 +436,14 @@ public class AudioServiceImpl implements AudioService {
                 .findByCallId(callId);
     }
 
-
     /*
      * =========================================================
-     * GET AUDIO BY DATABASE ID
+     * 6. GET AUDIO BY DATABASE ID
      * =========================================================
      */
     @Override
-    public CallAudio getAudioById(Long id) {
+    public CallAudio getAudioById(
+            Long id) {
 
         return callAudioRepository
                 .findById(id)
@@ -418,7 +454,6 @@ public class AudioServiceImpl implements AudioService {
                         )
                 );
     }
-
 
     /*
      * =========================================================
@@ -433,7 +468,6 @@ public class AudioServiceImpl implements AudioService {
                 + "_"
                 + audioType.toUpperCase();
     }
-
 
     /*
      * =========================================================
@@ -451,7 +485,6 @@ public class AudioServiceImpl implements AudioService {
             );
         }
     }
-
 
     /*
      * =========================================================
@@ -476,7 +509,6 @@ public class AudioServiceImpl implements AudioService {
         );
     }
 
-
     /*
      * =========================================================
      * RECORDING SESSION
@@ -495,7 +527,6 @@ public class AudioServiceImpl implements AudioService {
         private final ByteArrayOutputStream audioBuffer =
                 new ByteArrayOutputStream();
 
-
         public RecordingSession(
                 String callId,
                 String audioType,
@@ -511,7 +542,6 @@ public class AudioServiceImpl implements AudioService {
                     LocalDateTime.now();
         }
 
-
         public synchronized void append(
                 byte[] data) {
 
@@ -522,18 +552,15 @@ public class AudioServiceImpl implements AudioService {
             );
         }
 
-
         public byte[] getAudioBytes() {
 
             return audioBuffer.toByteArray();
         }
 
-
         public AudioFormat getFormat() {
 
             return format;
         }
-
 
         public LocalDateTime getStartTime() {
 
