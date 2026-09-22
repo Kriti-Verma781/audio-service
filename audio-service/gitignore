@@ -1,5 +1,7 @@
 target/
 audio-storage/
+C:\Recordings/
+*.wav
 .classpath
 .project
 .settings/
